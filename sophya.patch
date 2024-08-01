@@ -1,0 +1,54 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index a9f0fb298..8ec6924b9 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -301,13 +301,6 @@ pub struct EguiRenderOutput {
+     pub textures_delta: egui::TexturesDelta,
+ }
+ 
+-impl EguiRenderOutput {
+-    /// Returns `true` if the output has no Egui shapes and no textures delta
+-    pub fn is_empty(&self) -> bool {
+-        self.paint_jobs.is_empty() && self.textures_delta.is_empty()
+-    }
+-}
+-
+ /// Is used for storing Egui output.
+ #[derive(Component, Clone, Default)]
+ pub struct EguiOutput {
+diff --git a/src/systems.rs b/src/systems.rs
+index 2a38ea258..a41cda8b5 100644
+--- a/src/systems.rs
++++ b/src/systems.rs
+@@ -467,8 +467,6 @@ pub fn process_output_system(
+     mut event: EventWriter<RequestRedraw>,
+     #[cfg(windows)] mut last_cursor_icon: Local<bevy::utils::HashMap<Entity, egui::CursorIcon>>,
+ ) {
+-    let mut should_request_redraw = false;
+-
+     for mut context in contexts.iter_mut() {
+         let ctx = context.ctx.get_mut();
+         let full_output = ctx.end_frame();
+@@ -507,8 +505,9 @@ pub fn process_output_system(
+         #[cfg(not(windows))]
+         set_icon();
+ 
+-        let needs_repaint = !context.render_output.is_empty();
+-        should_request_redraw |= ctx.has_requested_repaint() && needs_repaint;
++        if ctx.has_requested_repaint() {
++            event.send(RequestRedraw);
++        }
+ 
+         #[cfg(feature = "open_url")]
+         if let Some(egui::output::OpenUrl { url, new_tab }) = platform_output.open_url {
+@@ -529,10 +528,6 @@ pub fn process_output_system(
+             }
+         }
+     }
+-
+-    if should_request_redraw {
+-        event.send(RequestRedraw);
+-    }
+ }
+ 
+ fn egui_to_winit_cursor_icon(cursor_icon: egui::CursorIcon) -> Option<bevy::window::CursorIcon> {
