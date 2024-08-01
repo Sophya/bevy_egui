@@ -475,8 +475,6 @@ pub fn process_output_system(
     mut event: EventWriter<RequestRedraw>,
     #[cfg(windows)] mut last_cursor_icon: Local<bevy::utils::HashMap<Entity, egui::CursorIcon>>,
 ) {
-    let mut should_request_redraw = false;
-
     for mut context in contexts.iter_mut() {
         let ctx = context.ctx.get_mut();
         let full_output = ctx.end_frame();
@@ -519,8 +517,9 @@ pub fn process_output_system(
         #[cfg(not(windows))]
         set_icon();
 
-        let needs_repaint = !context.render_output.is_empty();
-        should_request_redraw |= ctx.has_requested_repaint() && needs_repaint;
+        if ctx.has_requested_repaint() {
+            event.send(RequestRedraw);
+        }
 
         #[cfg(feature = "open_url")]
         if let Some(egui::output::OpenUrl { url, new_tab }) = platform_output.open_url {
@@ -540,10 +539,6 @@ pub fn process_output_system(
                 log::error!("Failed to open '{}': {:?}", url, err);
             }
         }
-    }
-
-    if should_request_redraw {
-        event.send(RequestRedraw);
     }
 }
 
